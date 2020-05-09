@@ -682,6 +682,12 @@
       }
     },
 
+    "steppers": {
+      "stepper": {
+        "addr": 11
+      }
+    },
+
     "knobs": {
       "k1": {
         "msb": 13,

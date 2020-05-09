@@ -6,34 +6,38 @@ export interface StepWheelConfig {
 }
 
 /**
- * Stepwhell is a 4-bit clicky rotary encoder.
+ * Step wheel is a 4-bit clicky rotary encoder.
  */
 export class StepWheel implements Widget {
-  readonly name: string;
   readonly addr: number;
-  readonly controller: EventEmitter;
 
-  step: number;
+  step = 0;
 
-  constructor(name: string, config: StepWheelConfig, controller: EventEmitter) {
-    this.name = name;
+  constructor(
+    readonly name: string,
+    config: StepWheelConfig,
+    readonly controller: EventEmitter
+  ) {
     this.addr = config.addr;
-    this.controller = controller;
-
-    this.step = 0;
   }
 
   parseInput(data: Uint8Array) {
     const newStep = data[this.addr];
-    if (newStep == this.step) {
+    if (this.step === newStep) {
       return;
     }
 
-    if (newStep > this.step) {
-      this.controller.emit(`${this.name}:step`, { direction: 1 });
-    } else if (newStep < this.step) {
-      this.controller.emit(`${this.name}:step`, { direction: -1 });
-    }
+    // Maschine MK3 wheel goes cyclically from 0 to 15
+    const isJumpBackward = this.step === 0 && newStep === 15;
+    const isJumpForward = this.step === 15 && newStep === 0;
+
+    const isIncrement =
+      (this.step < newStep && !isJumpBackward) || isJumpForward;
+
+    this.controller.emit(`${this.name}:step`, {
+      direction: isIncrement ? 1 : -1,
+    });
+
     this.step = newStep;
   }
 }

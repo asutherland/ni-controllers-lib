@@ -40,6 +40,10 @@ export const runDemo = (mk3: MaschineMk3) =>
       mk3.on(`knobTouch${i}`, (touched) => {});
     }
 
+    mk3.on(`stepper:step`, ({ direction }) => {
+      console.log(`stepper: ${direction < 0 ? "decrement" : "increment"}`);
+    });
+
     for (let i = 1; i <= 2; i++) {
       mk3.on(`touchStrip${i}:changed`, ({ value, timestamp }) => {
         const hexTime = timestamp.toString(16).padStart(4, "0");

@@ -6,6 +6,7 @@ interface MaschineMk3EventMap {
   "p:pressed": (index: number, pressure: number) => void;
   "p:pressure": (index: number, pressure: number) => void;
   "p:released": (index: number, pressure: 0) => void;
+  "stepper:step": (data: { direction: -1 | 1 }) => void;
 }
 
 export class MaschineMk3 extends BaseController {
