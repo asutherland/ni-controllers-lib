@@ -18,10 +18,10 @@ class NodeUsbAdapter implements UsbAdapter {
 
   async claimInterface(interfaceId: number) {
     this.nInterface = this.nDevice.interface(interfaceId);
-    return this.nInterface;
+    this.nInterface.claim();
   }
 
-  async transferOut(endpointId: number, data: Uint8Array) {
+  async transferOut(endpointId: number, data: BufferSource) {
     if (this.nInterface == null) {
       throw new Error(
         "The NodeUsbAdapter claimInterface method should be called before transferOut"

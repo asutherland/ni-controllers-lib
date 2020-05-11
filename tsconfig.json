@@ -10,5 +10,5 @@
     "sourceMap": true,
     "outDir": "dist"
   },
-  "include": ["lib", "types"]
+  "include": ["lib", "types", "examples"]
 }

@@ -3,7 +3,7 @@ export interface UsbAdapter {
 
   claimInterface(interfaceId: number): Promise<unknown>;
 
-  transferOut(endpointId: number, data: Uint8Array): Promise<unknown>;
+  transferOut(endpointId: number, data: BufferSource): Promise<unknown>;
 }
 
 export interface HidAdapter {

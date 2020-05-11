@@ -16,7 +16,7 @@ class WebUsbAdapter implements UsbAdapter {
     return await this.nDevice.claimInterface(interfaceId);
   }
 
-  async transferOut(endpointId: number, data: Uint8Array) {
+  async transferOut(endpointId: number, data: BufferSource) {
     return await this.nDevice.transferOut(endpointId, data);
   }
 }

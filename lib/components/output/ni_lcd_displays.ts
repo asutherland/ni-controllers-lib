@@ -7,16 +7,24 @@
 import { UsbAdapter } from "../../usb/adapter";
 
 const HEADER_LENGTH = 16;
+const COMMAND_LENGTH = 4;
+const PIXEL_LENGTH = 2;
+const DATA_START = HEADER_LENGTH + COMMAND_LENGTH;
+
+/**
+ * Converts a 3 bytes rgb color value (0 -> 255) to a 16 bit value.
+ */
+const toRgb565 = (red: number, green: number, blue: number) =>
+  ((red & 0xf8) << 8) + ((green & 0xfc) << 3) + (blue >> 3);
 
 function fillHeader(
-  buf: ArrayBufferLike,
+  view: DataView,
   displayNum: number,
   x: number,
   y: number,
   width: number,
   height: number
 ) {
-  const view = new DataView(buf);
   view.setUint8(0, 0x84);
   // 0x2 is 0
   view.setUint8(2, displayNum);
@@ -29,20 +37,11 @@ function fillHeader(
   view.setUint16(14, height);
 }
 
-const COMMAND_LENGTH = 4;
-const PIXEL_LENGTH = 2;
-
-function fillTransmitCommand(
-  buf: ArrayBufferLike,
-  numPixels: number,
-  off = HEADER_LENGTH
-) {
+function fillTransmitCommand(view: DataView, numPixels: number) {
   const halfPixels = numPixels / 2;
-
-  const view = new DataView(buf, off);
   // We want a big endian 24-bit value, so write it 32-bit then clobber the MSB
   // with the command.
-  view.setUint32(0, halfPixels);
+  view.setUint32(0, halfPixels, false);
   view.setUint8(0, 0);
 }
 
@@ -76,49 +75,55 @@ export class LCDDisplays {
     this.height = displayConfig.eachHeight;
   }
 
-  /**
-   * Given an existing ArrayBuffer that contains data to display, blit it to the
-   * given display.
-   */
-  async paintDisplay(displayNum: number, pixelBuffer: ArrayBufferLike) {
-    const width = this.width;
-    const height = this.height;
-    const numPixels = width * height;
-
-    const buf = new ArrayBuffer(
-      HEADER_LENGTH + COMMAND_LENGTH * 3 + numPixels * PIXEL_LENGTH
+  createDisplayBuffer() {
+    return new ArrayBuffer(
+      HEADER_LENGTH +
+        COMMAND_LENGTH * 3 +
+        this.width * this.height * PIXEL_LENGTH
     );
-    const allData = new Uint8Array(buf);
-
-    fillHeader(buf, displayNum, 0, 0, width, height);
-    fillTransmitCommand(buf, numPixels);
-
-    const dataStart = HEADER_LENGTH + COMMAND_LENGTH;
-    const dataStop = dataStart + numPixels * PIXEL_LENGTH;
-
-    // Create a Uint8Array on the underlying buffer.
-    const pixelRow = new Uint8Array(pixelBuffer, 0, numPixels * PIXEL_LENGTH);
-
-    allData.set(pixelRow, dataStart);
-    // the blit command
-    allData[dataStop] = 0x03;
-    // the end command
-    allData[dataStop + COMMAND_LENGTH] = 0x40;
-
-    await this.device.transferOut(this.endpointId, allData);
   }
 
   /**
-   * Given a JS array where each entry is a 16-bit number representing 2-bytes
-   * worth of pixel data, blit it to the given display.
+   * Given an existing Uint8Array that contains data to display, blit it to the
+   * given display.
    *
-   * TODO: We can just permute the `paintDisplay` implementation to reduce
-   * copies since we only expect this variant to be used.  Although we may also
-   * implement some dumb home-brew RLE-compression, so maybe wait for that.
-   * (ex: negative value is a run-length for the following pixels).
+   * @param displayNum the index of the screen to draw to
+   * @param rgbData the array containing the data in RGB order, as integers in
+   * the range 0 to 255.
+   * @param buf if given the buffer is not be created by this method and therefor
+   * can be reused from call to call to reduce allocation
    */
-  paintDisplayFromArray(displayNum: number, array: ArrayLike<number>) {
-    const u16arr = Uint16Array.from(array);
-    return this.paintDisplay(displayNum, u16arr.buffer);
+  async paintDisplay(
+    displayNum: number,
+    rgbData: Uint8Array,
+    buf = this.createDisplayBuffer()
+  ) {
+    const allData = new DataView(buf);
+    const pixelCount = this.width * this.height;
+
+    fillHeader(allData, displayNum, 0, 0, this.width, this.height);
+    fillTransmitCommand(new DataView(buf, HEADER_LENGTH), pixelCount);
+
+    const dataStop = DATA_START + pixelCount * PIXEL_LENGTH;
+
+    for (let idxPixel = 0; idxPixel < pixelCount; idxPixel++) {
+      const rgbOffset = idxPixel * 3;
+      const r = rgbData[rgbOffset];
+      const g = rgbData[rgbOffset + 1];
+      const b = rgbData[rgbOffset + 2];
+
+      // set the 16 bits pixel data in a big endian way
+      allData.setUint16(
+        DATA_START + idxPixel * PIXEL_LENGTH,
+        toRgb565(r, g, b)
+      );
+    }
+
+    // the blit command
+    allData.setUint8(dataStop, 0x03);
+    // the end command
+    allData.setUint8(dataStop + COMMAND_LENGTH, 0x40);
+
+    await this.device.transferOut(this.endpointId, allData.buffer);
   }
 }

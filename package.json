@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "concurrently": "^5.2.0",
+    "jpeg-js": "^0.4.0",
     "parcel-bundler": "^1.12.4",
     "prettier": "^2.0.5",
     "rimraf": "^3.0.2",
