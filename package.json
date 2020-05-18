@@ -1,6 +1,6 @@
 {
   "name": "ni-controllers-lib",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "A package providing access to some Native Instruments controllers. Supports all inputs and setting any LED and LCD displays when available.",
   "author": "Andrew Metcalf <met5678@gmail.com>",
   "files": [
